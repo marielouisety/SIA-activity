@@ -35,6 +35,7 @@ const resolvers = {
     updatePost: (_, args) => {
       return prisma.post.update({
         where: { id: args.id },
+        where: { id: args.id },
         data: { title: args.title, content: args.content },
       });
     },
