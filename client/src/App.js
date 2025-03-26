@@ -12,23 +12,20 @@ import {
 import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
 import { createClient } from "graphql-ws";
 import { getMainDefinition } from "@apollo/client/utilities";
+import "./index.css"; // Import the styled CSS file
 
-// HTTP link for queries and mutations
+// Set up Apollo Client for GraphQL
 const httpLink = new HttpLink({
   uri: "http://localhost:4002/graphql",
 });
 
-// WebSocket link for subscriptions
 const wsLink = new GraphQLWsLink(
   createClient({
     url: "ws://localhost:4002/graphql",
-    connectionParams: {
-      reconnect: true, // Ensures reconnection on failure
-    },
+    connectionParams: { reconnect: true },
   })
 );
 
-// Split link to route subscriptions via WebSockets
 const splitLink = split(
   ({ query }) => {
     const definition = getMainDefinition(query);
@@ -41,13 +38,12 @@ const splitLink = split(
   httpLink
 );
 
-// Initialize Apollo Client
 const client = new ApolloClient({
   link: splitLink,
   cache: new InMemoryCache(),
 });
 
-// GraphQL query to fetch posts
+// GraphQL Queries & Subscriptions
 const GET_POSTS = gql`
   query GetPosts {
     posts {
@@ -58,7 +54,6 @@ const GET_POSTS = gql`
   }
 `;
 
-// GraphQL subscription for real-time updates
 const POST_CREATED_SUBSCRIPTION = gql`
   subscription OnPostCreated {
     postCreated {
@@ -69,65 +64,51 @@ const POST_CREATED_SUBSCRIPTION = gql`
   }
 `;
 
+// PostsTable Component
 function PostsTable() {
   const { data, loading, error } = useQuery(GET_POSTS);
   const { data: subscriptionData } = useSubscription(POST_CREATED_SUBSCRIPTION);
   const [posts, setPosts] = useState([]);
 
-  // Update posts when fetched
   useEffect(() => {
-    if (data && data.posts) {
+    if (data?.posts) {
       setPosts(data.posts);
     }
   }, [data]);
 
-  // Append new post when received via subscription
   useEffect(() => {
     if (subscriptionData) {
       setPosts((prev) => [...prev, subscriptionData.postCreated]);
     }
   }, [subscriptionData]);
 
-  if (loading)
-    return <p className="text-center text-gray-600 text-lg">Loading posts...</p>;
-
-  if (error)
-    return (
-      <p className="text-center text-red-500 text-lg">
-        Error loading posts: {error.message}
-      </p>
-    );
-
   return (
-    <div className="max-w-3xl mx-auto mt-6">
-      <table className="w-full border border-gray-300 rounded-lg shadow-md">
+    <div className="container">
+      <h1>My Posts</h1>
+
+      {loading && <p className="message loading">Loading posts...</p>}
+      {error && <p className="message error">Error: {error.message}</p>}
+
+      <table>
         <thead>
-          <tr className="bg-blue-600 text-white">
-            <th className="p-3">ID</th>
-            <th className="p-3">Title</th>
-            <th className="p-3">Content</th>
+          <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Content</th>
           </tr>
         </thead>
         <tbody>
           {posts.length > 0 ? (
             posts.map((post) => (
-              <tr
-                key={post.id}
-                className="border-t hover:bg-blue-100 transition duration-200"
-              >
-                <td className="p-3 text-center">{post.id}</td>
-                <td className="p-3">{post.title}</td>
-                <td className="p-3">{post.content}</td>
+              <tr key={post.id}>
+                <td>{post.id}</td>
+                <td>{post.title}</td>
+                <td>{post.content}</td>
               </tr>
             ))
           ) : (
             <tr>
-              <td
-                colSpan="3"
-                className="text-center text-gray-500 p-4 italic"
-              >
-                No posts available.
-              </td>
+              <td colSpan="3" className="message">No posts available.</td>
             </tr>
           )}
         </tbody>
@@ -136,13 +117,11 @@ function PostsTable() {
   );
 }
 
+// Main App Component
 function App() {
   return (
     <ApolloProvider client={client}>
-      <div className="min-h-screen bg-gray-100 p-6">
-        <h1 className="text-3xl font-bold text-center text-blue-700 mb-4">
-          Live Posts Table
-        </h1>
+      <div className="app">
         <PostsTable />
       </div>
     </ApolloProvider>
